@@ -46,7 +46,7 @@ ensure_download_tool() {
 
 # Function to download the package list from GitHub
 download_package_list() {
-    local github_raw_url="https://raw.githubusercontent.com/username/repo/main/known.lst"
+    local github_raw_url="https://raw.githubusercontent.com/ich-bin-fr0st/ProxyJacker-removal--Android/main/known.lst"
     local temp_file="known_temp.lst"
 
     if command_exists curl; then
