@@ -141,7 +141,7 @@ mapfile -t packages < known.lst
 # Check if packages are installed on the Android device
 installed_packages=()
 for package in "${packages[@]}"; do
-    if adb shell pm list packages | grep -q "$package"; then
+    if adb shell pm list packages -3 | grep -q "$package"; then
         installed_packages+=("$package")
     fi
 done
