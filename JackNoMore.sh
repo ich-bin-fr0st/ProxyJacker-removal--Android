@@ -50,9 +50,24 @@ download_package_list() {
     local temp_file="known_temp.lst"
 
     if command_exists curl; then
-        curl -s -o "$temp_file" "$github_raw_url"
+        if ! curl -f -s -o "$temp_file" "$github_raw_url"; then
+            if [ $? -eq 22 ]; then
+                echo "Error 404: Package list file not found on GitHub."
+            else
+                echo "Failed to download package list from GitHub."
+            fi
+            return 1
+        fi
     elif command_exists wget; then
-        wget -q -O "$temp_file" "$github_raw_url"
+        if ! wget -q -O "$temp_file" "$github_raw_url"; then
+            if grep -q "404: Not Found" "$temp_file"; then
+                echo "Error 404: Package list file not found on GitHub."
+                rm -f "$temp_file"
+            else
+                echo "Failed to download package list from GitHub."
+            fi
+            return 1
+        fi
     else
         echo "Neither curl nor wget is available. This shouldn't happen."
         return 1
@@ -61,9 +76,10 @@ download_package_list() {
     if [ -s "$temp_file" ]; then
         mv "$temp_file" known.lst
         echo "Successfully downloaded and updated known.lst"
+        return 0
     else
         rm -f "$temp_file"
-        echo "Failed to download package list or file is empty."
+        echo "Downloaded file is empty."
         return 1
     fi
 }
@@ -107,10 +123,10 @@ fi
 if ensure_download_tool; then
     echo "Attempting to download updated package list from GitHub..."
     if ! download_package_list; then
-        echo "Failed to download package list. Using local known.lst if available."
+        echo "Continuing with local known.lst if available."
     fi
 else
-    echo "Unable to download package list. Using local known.lst if available."
+    echo "Unable to download package list. Continuing with local known.lst if available."
 fi
 
 # Check if known.lst exists
@@ -140,7 +156,7 @@ if [ ${#installed_packages[@]} -gt 0 ]; then
     if [ "$uninstall_choice" = "y" ]; then
         failed_packages=()
         for package in "${installed_packages[@]}"; do
-            if ! adb shell pm uninstall --user 0 "$package"; then
+            if ! adb shell pm uninstall "$package"; then
                 failed_packages+=("$package")
             fi
         done
@@ -151,7 +167,7 @@ if [ ${#installed_packages[@]} -gt 0 ]; then
             adb root
             if wait_for_device; then
                 for package in "${failed_packages[@]}"; do
-                    adb shell pm uninstall --user 0 "$package"
+                    adb shell pm uninstall "$package"
                 done
             else
                 echo "Failed to reconnect to the device. Some packages may not have been uninstalled."
